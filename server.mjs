@@ -5,12 +5,17 @@ import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const port = Number(process.env.PORT || 3000);
-const password = process.env.APP_PASSWORD || 'cambiar-antes-de-publicar';
 const production = process.env.NODE_ENV === 'production';
+const password = process.env.APP_PASSWORD || (production ? '' : 'prueba-local');
 const sessionDuration = 12 * 60 * 60 * 1000;
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const sessions = new Map();
 const attempts = new Map();
+
+if (!password) {
+  console.error('Falta la variable obligatoria APP_PASSWORD.');
+  process.exit(1);
+}
 
 const mime = {
   '.html': 'text/html; charset=utf-8',
