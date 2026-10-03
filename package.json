@@ -1,13 +1,11 @@
 {
   "name": "bytesorteos",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.mjs",
+    "dev": "node preview-server.cjs",
     "start": "node server.mjs"
   },
-  "engines": {
-    "node": ">=20"
-  }
+  "engines": { "node": ">=22" }
 }

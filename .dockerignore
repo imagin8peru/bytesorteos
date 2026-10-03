@@ -1,5 +1,9 @@
-.git
-.gitignore
-.env*
-node_modules
-README.md
+*
+!Dockerfile
+!package.json
+!server.mjs
+!index.html
+!styles.css
+!app.js
+!assets/
+!assets/**

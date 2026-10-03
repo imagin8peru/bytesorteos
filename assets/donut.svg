@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <!-- Definitions for clean styles -->
+  <defs>
+    <style>
+      .outline { fill: #1a2035; }
+      .green-body { fill: #3dd62e; stroke: #1a2035; stroke-width: 14; stroke-linejoin: round; stroke-linecap: round; }
+      .pink-icing { fill: #e8278e; stroke: #1a2035; stroke-width: 14; stroke-linejoin: round; stroke-linecap: round; }
+      .hole-bg { fill: #ffffff; stroke: #1a2035; stroke-width: 14; }
+      .sprinkle-green { fill: #7de813; stroke: #1a2035; stroke-width: 5; }
+      .sprinkle-navy { fill: #1a2035; }
+    </style>
+  </defs>
+
+  <!-- Group centered -->
+  <g transform="translate(250, 250)">
+    <!-- Base Green Donut with bite on top-right -->
+    <path class="green-body" d="
+      M -20,-190
+      C 40,-195 90,-180 130,-150
+      C 110,-125 110,-95 130,-75
+      C 150,-55 185,-55 200,-85
+      C 210,-40 205,20 190,60
+      C 165,130 100,195 0,200
+      C -110,205 -205,115 -200,0
+      C -195,-110 -110,-195 -20,-190
+      Z
+    " />
+
+    <!-- Center Hole -->
+    <circle class="hole-bg" cx="0" cy="5" r="65" />
+
+    <!-- Pink Icing Layer -->
+    <path class="pink-icing" d="
+      M -150,-120
+      C -130,-165 -70,-195 -20,-190
+      C 35,-195 85,-180 130,-150
+      C 110,-125 110,-95 130,-75
+      C 120,-60 100,-65 85,-75
+      C 70,-85 55,-70 40,-60
+      C 20,-50 -5,-65 -25,-60
+      C -45,-55 -60,-40 -80,-50
+      C -100,-60 -115,-80 -130,-80
+      C -145,-80 -160,-100 -150,-120
+      Z
+    " />
+
+    <!-- Sprinkles on Icing (Lime green) -->
+    <circle class="sprinkle-green" cx="-100" cy="-135" r="14" />
+    <circle class="sprinkle-green" cx="-40" cy="-105" r="14" />
+    <circle class="sprinkle-green" cx="5" cy="-160" r="14" />
+    <circle class="sprinkle-green" cx="80" cy="-115" r="14" />
+
+    <!-- Sprinkles on Green Body (Dark Navy pills/ellipses) -->
+    <rect class="sprinkle-navy" x="-135" y="-30" width="16" height="32" rx="8" transform="rotate(30 -135 -30)" />
+    <rect class="sprinkle-navy" x="-80" y="110" width="16" height="32" rx="8" transform="rotate(-25 -80 110)" />
+    <rect class="sprinkle-navy" x="55" y="120" width="16" height="32" rx="8" transform="rotate(35 55 120)" />
+    <rect class="sprinkle-navy" x="145" y="45" width="16" height="32" rx="8" transform="rotate(-30 145 45)" />
+  </g>
+</svg>
