@@ -37,7 +37,7 @@
     prizeName: 'Teclado mecánico',
     spinsCount: 23,
     participants: generateDemoNicks(1248),
-    participantContacts: Array(1248).fill(''),
+    participantContacts: Array(1248).fill(''), participantDetails: [],
     winnersHistory: [
       { spin: 23, number: 3, nick: 'AlexTechYT', contact: 'alex@example.com', prize: 'Teclado mecánico', eventTitle: 'Sorteo Cooler Master 50 Aniversario', registeredAt: '2026-10-01T12:45:21-05:00' },
       { spin: 22, number: 28, nick: 'CodeMaster', contact: 'code@example.com', prize: 'Teclado mecánico', eventTitle: 'Sorteo Cooler Master 50 Aniversario', registeredAt: '2026-10-01T12:41:07-05:00' },
@@ -48,7 +48,7 @@
     hideResult: false,
     spinDurationSeconds: 6,
     googleSheetsUrl: '',
-    importConfig: { nameColumn: '', contactColumn: '', duplicateColumn: '', duplicateKeep: 'first', filters: [] },
+    importConfig: { nameColumn: '', contactColumn: '', countryColumn: '', answerColumn: '', duplicateColumn: '', duplicateKeep: 'first', filters: [] },
     eventTitle: 'Sorteo Cooler Master 50 Aniversario',
     winningSpinNumber: 5,
     currentSequenceSpin: 0,
@@ -74,6 +74,7 @@
         displayResult: { ...DEFAULT_STATE.displayResult, ...(saved.displayResult || {}) }
         };
         restored.participantContacts = restored.participants.map((_, index) => String(saved.participantContacts?.[index] || ''));
+        restored.participantDetails = restored.participants.map((_, index) => ({ country: String(saved.participantDetails?.[index]?.country || ''), answer: String(saved.participantDetails?.[index]?.answer || '') }));
         return restored;
       }
     } catch (error) {
@@ -199,6 +200,7 @@
     'openConfigBtn', 'closeConfigBtn', 'cancelConfigBtn', 'saveConfigBtn', 'configModal', 'prizeInput',
     'participantsTextarea', 'modalNickCount', 'btnPreset50', 'btnPreset100', 'btnPreset1248',
     'spinDurationSelect', 'sheetsUrlInput', 'testSheetsBtn', 'sheetsStatus', 'csvFileInput',
+    'cameraListToggle', 'cameraParticipants', 'cameraParticipantCount', 'cameraParticipantSearch', 'cameraParticipantHead', 'cameraParticipantBody', 'countryColumnSelect', 'answerColumnSelect',
     'importBuilder', 'nameColumnSelect', 'contactColumnSelect', 'duplicateColumnSelect', 'duplicateKeepSelect', 'addFilterBtn',
     'filtersContainer', 'summaryTotal', 'summaryFiltered', 'summaryDuplicates', 'summaryValid',
     'importPreview', 'previewLimitNote', 'applyImportBtn', 'clearHistoryBtn', 'resetAllBtn',
@@ -256,14 +258,14 @@
   }
 
   function spinRoulette() {
-    if (isSpinning) return;
+    if (isSpinning || (VIEW_MODE === 'display' && !DOM.cameraParticipants.hidden)) return;
     if (!state.participants.length) return alert('No hay participantes válidos. Importa o agrega una lista antes de girar.');
     const winningSpin = Math.max(1, Number(state.winningSpinNumber) || 1);
     if (state.displayResult?.type === 'winner' && state.currentSequenceSpin >= winningSpin) {
       if (VIEW_MODE === 'control') alert('Confirma el ganador o reinicia la secuencia antes de volver a girar.');
       return;
     }
-    isSpinning = true; audioSynth.initCtx();
+    isSpinning = true; DOM.cameraListToggle.disabled = true; audioSynth.initCtx();
     const total = state.participants.length, winnerIndex = Math.floor(Math.random() * total);
     const sequenceSpin = Math.min(state.currentSequenceSpin + 1, winningSpin);
     const isWinnerSpin = sequenceSpin === winningSpin;
@@ -288,7 +290,7 @@
       }
       if (progress < 1) requestAnimationFrame(animate);
       else {
-        clearInterval(bulbInterval); isSpinning = false; renderOuterBulbs();
+        clearInterval(bulbInterval); isSpinning = false; DOM.cameraListToggle.disabled = false; renderOuterBulbs();
         state.currentSequenceSpin = sequenceSpin;
         if (isWinnerSpin) {
           state.selectedWinner = {
@@ -326,6 +328,7 @@
     };
     state.winnersHistory.unshift(historyItem);
     state.participants.splice(winner.index, 1);
+    state.participantDetails.splice(winner.index, 1);
     if (Array.isArray(state.participantContacts)) state.participantContacts.splice(winner.index, 1);
     state.selectedWinner = null;
     state.currentSequenceSpin = 0;
@@ -386,6 +389,7 @@
     }
     DOM.soundToggle.checked = state.soundEnabled; DOM.hideResultToggle.checked = state.hideResult;
     renderRecentWinnersGrid(); renderFullHistoryTable();
+    if (VIEW_MODE === 'display' && !DOM.cameraParticipants.hidden) renderCameraParticipants();
     if (VIEW_MODE === 'display') requestAnimationFrame(fitCameraResultText);
   }
 
@@ -424,9 +428,9 @@
     });
   }
 
-  function setSelectOptions(select, headers, includeNone = false) {
+  function setSelectOptions(select, headers, includeNone = false, noneLabel = 'No eliminar duplicados') {
     const previous = select.value; select.innerHTML = '';
-    if (includeNone) select.add(new Option('No eliminar duplicados', ''));
+    if (includeNone) select.add(new Option(noneLabel, ''));
     headers.forEach(header => select.add(new Option(header, header)));
     if ([...select.options].some(option => option.value === previous)) select.value = previous;
   }
@@ -440,12 +444,16 @@
     importedHeaders = [...new Set(importedRows.flatMap(row => Object.keys(row)))];
     if (!importedRows.length || !importedHeaders.length) throw new Error('No se encontraron filas con encabezados.');
     setSelectOptions(DOM.nameColumnSelect, importedHeaders);
-    setSelectOptions(DOM.contactColumnSelect, importedHeaders, true);
+    setSelectOptions(DOM.contactColumnSelect, importedHeaders, true, 'No usar contacto');
+    setSelectOptions(DOM.countryColumnSelect, importedHeaders, true, 'No mostrar país');
+    setSelectOptions(DOM.answerColumnSelect, importedHeaders, true, 'No mostrar respuesta');
     setSelectOptions(DOM.duplicateColumnSelect, importedHeaders, true);
     const saved = state.importConfig || {};
     DOM.nameColumnSelect.value = importedHeaders.includes(saved.nameColumn) ? saved.nameColumn : findSuggestedHeader(importedHeaders, ['usuario', 'nombre', 'nick', 'youtube']);
     DOM.contactColumnSelect.value = importedHeaders.includes(saved.contactColumn) ? saved.contactColumn : findSuggestedHeader(importedHeaders, ['correo', 'email', 'contacto', 'celular', 'teléfono', 'telefono'], '');
     DOM.duplicateColumnSelect.value = importedHeaders.includes(saved.duplicateColumn) ? saved.duplicateColumn : findSuggestedHeader(importedHeaders, ['correo', 'email', 'usuario', 'teléfono', 'telefono']);
+    DOM.countryColumnSelect.value = importedHeaders.includes(saved.countryColumn) ? saved.countryColumn : findSuggestedHeader(importedHeaders, ['país', 'pais', 'country'], '');
+    DOM.answerColumnSelect.value = importedHeaders.includes(saved.answerColumn) ? saved.answerColumn : findSuggestedHeader(importedHeaders, ['respuesta', 'answer'], '');
     DOM.duplicateKeepSelect.value = saved.duplicateKeep || 'first'; DOM.filtersContainer.innerHTML = '';
     (saved.filters || []).forEach(filter => addFilterRow(filter));
     DOM.importBuilder.hidden = false; DOM.sheetsStatus.textContent = `${sourceLabel}: ${importedRows.length.toLocaleString('es-PE')} filas`; DOM.sheetsStatus.style.color = '#9beb32';
@@ -500,6 +508,7 @@
     filteredImport = {
       participants: deduped.map(row => String(row[nameColumn]).trim()),
       contacts: deduped.map(row => contactColumn ? String(row[contactColumn] || '').trim() : ''),
+      details: deduped.map(row => ({ country: String(row[DOM.countryColumnSelect.value] || '').trim(), answer: String(row[DOM.answerColumnSelect.value] || '').trim() })),
       filtered: importedRows.length - passing.length,
       duplicates
     };
@@ -516,7 +525,7 @@
 
   function openConfigModal() {
     DOM.prizeInput.value = state.prizeName; DOM.participantsTextarea.value = state.participants.join('\n');
-    draftParticipantEntries = state.participants.map((nick, index) => ({ nick, contact: state.participantContacts?.[index] || '' }));
+    draftParticipantEntries = state.participants.map((nick, index) => ({ nick, contact: state.participantContacts?.[index] || '', details: state.participantDetails?.[index] || {} }));
     DOM.modalNickCount.textContent = `${state.participants.length.toLocaleString('es-PE')} nicks`; DOM.spinDurationSelect.value = state.spinDurationSeconds;
     DOM.sheetsUrlInput.value = state.googleSheetsUrl || '';
     DOM.eventTitleInput.value = state.eventTitle || '';
@@ -539,15 +548,17 @@
     state.winningSpinNumber = Math.min(99, Math.max(1, Number(DOM.winningSpinInput.value) || 1));
     state.winnerMessage = DOM.winnerMessageInput.value.trim() || '¡Ganaste!';
     state.losingMessages = DOM.losingMessagesTextarea.value.split('\n').map(value => value.trim()).filter(Boolean);
-    const contactQueues = new Map();
+    const entryQueues = new Map();
     draftParticipantEntries.forEach(entry => {
       const key = normalized(entry.nick);
-      if (!contactQueues.has(key)) contactQueues.set(key, []);
-      contactQueues.get(key).push(entry.contact || '');
+      if (!entryQueues.has(key)) entryQueues.set(key, []);
+      entryQueues.get(key).push(entry);
     });
     state.googleSheetsUrl = DOM.sheetsUrlInput.value.trim();
     state.participants = participants;
-    state.participantContacts = participants.map(nick => contactQueues.get(normalized(nick))?.shift() || '');
+    const entries = participants.map(nick => entryQueues.get(normalized(nick))?.shift() || {});
+    state.participantContacts = entries.map(entry => entry.contact || '');
+    state.participantDetails = entries.map(entry => ({ country: entry.details?.country || '', answer: entry.details?.answer || '' }));
     state.currentSequenceSpin = 0;
     state.selectedWinner = null;
     state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
@@ -571,12 +582,56 @@
     link.download = `ganadores_ruleta_byte_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(link.href);
   }
 
-  function setManualParticipants(list, contacts = []) {
+  function setManualParticipants(list, contacts = [], details = []) {
     DOM.participantsTextarea.value = list.join('\n'); DOM.modalNickCount.textContent = `${list.length.toLocaleString('es-PE')} nicks`;
-    draftParticipantEntries = list.map((nick, index) => ({ nick, contact: contacts[index] || '' }));
+    draftParticipantEntries = list.map((nick, index) => ({ nick, contact: contacts[index] || '', details: details[index] || {} }));
+  }
+
+  function renderCameraParticipants(focusWinner = false) {
+    const details = state.participantDetails || [];
+    const country = Boolean(state.importConfig.countryColumn) || details.some(item => item.country);
+    const answer = Boolean(state.importConfig.answerColumn) || details.some(item => item.answer);
+    const query = normalized(DOM.cameraParticipantSearch.value);
+    DOM.cameraParticipantHead.innerHTML = ''; DOM.cameraParticipantBody.innerHTML = '';
+    const heading = document.createElement('tr');
+    const columns = ['N.º', 'Usuario', ...(country ? ['País'] : []), ...(answer ? ['Respuesta'] : [])];
+    columns.forEach(label => { const cell = document.createElement('th'); cell.scope = 'col'; cell.textContent = label; heading.appendChild(cell); });
+    DOM.cameraParticipantHead.appendChild(heading);
+    const fragment = document.createDocumentFragment();
+    let winnerRow = null, shown = 0;
+    state.participants.forEach((nick, index) => {
+      const number = index + 1;
+      if (query && (/^\d+$/.test(query) ? String(number) !== query : !normalized(nick).includes(query))) return;
+      const row = document.createElement('tr');
+      if (!state.hideResult && state.displayResult.type === 'winner' && state.selectedWinner?.index === index) {
+        row.className = 'participant-is-winner'; row.setAttribute('aria-label', `Ganador: número ${number}, ${nick}`); winnerRow = row;
+      }
+      [number, nick, ...(country ? [details[index]?.country || '—'] : []), ...(answer ? [details[index]?.answer || '—'] : [])].forEach(value => {
+        const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell);
+      });
+      fragment.appendChild(row); shown += 1;
+    });
+    if (!shown) { const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = columns.length; cell.textContent = 'No se encontraron participantes'; row.appendChild(cell); fragment.appendChild(row); }
+    DOM.cameraParticipantBody.appendChild(fragment);
+    DOM.cameraParticipantCount.textContent = `${shown.toLocaleString('es-PE')} de ${state.participants.length.toLocaleString('es-PE')} participantes · numeración de la ruleta`;
+    if (focusWinner && winnerRow) requestAnimationFrame(() => winnerRow.scrollIntoView({ block: 'center' }));
+  }
+
+  function toggleCameraParticipants() {
+    const show = DOM.cameraParticipants.hidden;
+    DOM.cameraParticipants.hidden = !show;
+    document.body.classList.toggle('show-participants', show);
+    DOM.cameraListToggle.setAttribute('aria-expanded', String(show));
+    const label = show ? 'Volver a la ruleta' : 'Mostrar participantes';
+    DOM.cameraListToggle.setAttribute('aria-label', label); DOM.cameraListToggle.title = label;
+    DOM.cameraListToggle.querySelector('svg').innerHTML = show ? '<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6.3 6.3l11.4 11.4M6.3 17.7L17.7 6.3"/>' : '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>';
+    if (show) { DOM.cameraParticipantSearch.value = ''; renderCameraParticipants(true); }
+    else requestAnimationFrame(() => { renderOuterBulbs(); drawRouletteWheel(currentAngle); fitCameraResultText(); });
   }
 
   function init() {
+    DOM.cameraListToggle.addEventListener('click', toggleCameraParticipants);
+    DOM.cameraParticipantSearch.addEventListener('input', () => renderCameraParticipants());
     renderOuterBulbs(); drawRouletteWheel(currentAngle); updateUI();
     if (VIEW_MODE === 'display') {
       new ResizeObserver(fitCameraResultText).observe(DOM.winnerCard);
@@ -610,18 +665,18 @@
       try { loadImportedRows(parseCSV(await file.text()), file.name); } catch (error) { alert(`No se pudo leer el archivo: ${error.message}`); }
     });
     DOM.addFilterBtn.addEventListener('click', () => addFilterRow());
-    [DOM.nameColumnSelect, DOM.contactColumnSelect, DOM.duplicateColumnSelect, DOM.duplicateKeepSelect].forEach(element => element.addEventListener('change', recomputeImportPreview));
+    [DOM.nameColumnSelect, DOM.contactColumnSelect, DOM.countryColumnSelect, DOM.answerColumnSelect, DOM.duplicateColumnSelect, DOM.duplicateKeepSelect].forEach(element => element.addEventListener('change', recomputeImportPreview));
     DOM.applyImportBtn.addEventListener('click', () => {
       if (!filteredImport.participants.length) return;
-      setManualParticipants(filteredImport.participants, filteredImport.contacts);
-      state.importConfig = { nameColumn: DOM.nameColumnSelect.value, contactColumn: DOM.contactColumnSelect.value, duplicateColumn: DOM.duplicateColumnSelect.value, duplicateKeep: DOM.duplicateKeepSelect.value, filters: getFiltersFromUI() };
+      setManualParticipants(filteredImport.participants, filteredImport.contacts, filteredImport.details);
+      state.importConfig = { nameColumn: DOM.nameColumnSelect.value, contactColumn: DOM.contactColumnSelect.value, countryColumn: DOM.countryColumnSelect.value, answerColumn: DOM.answerColumnSelect.value, duplicateColumn: DOM.duplicateColumnSelect.value, duplicateKeep: DOM.duplicateKeepSelect.value, filters: getFiltersFromUI() };
       DOM.sheetsStatus.textContent = `${filteredImport.participants.length.toLocaleString('es-PE')} participantes listos`;
       DOM.participantsTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     DOM.clearHistoryBtn.addEventListener('click', () => { if (confirm('¿Limpiar todo el historial de ganadores?')) { state.winnersHistory = []; saveStateToStorage(); updateUI(); } });
     DOM.resetAllBtn.addEventListener('click', () => {
       if (!confirm('¿Restablecer participantes, filtros e historial?')) return;
-      state = { ...DEFAULT_STATE, participants: generateDemoNicks(1248), participantContacts: Array(1248).fill(''), importConfig: { ...DEFAULT_STATE.importConfig } };
+      state = { ...DEFAULT_STATE, participants: generateDemoNicks(1248), participantContacts: Array(1248).fill(''), participantDetails: [], importConfig: { ...DEFAULT_STATE.importConfig } };
       saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); DOM.configModal.classList.remove('active');
     });
     DOM.openHistoryBtn.addEventListener('click', () => { renderFullHistoryTable(); DOM.historyModal.classList.add('active'); });

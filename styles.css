@@ -1731,3 +1731,24 @@ body.view-display .header-event-title h2 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.camera-list-toggle, .camera-participants[hidden] { display: none; }
+body.view-display .camera-list-toggle { display: grid; place-items: center; position: fixed; right: 16px; bottom: 16px; z-index: 30; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #202035; cursor: pointer; box-shadow: 0 2px 8px #0002; }
+.camera-list-toggle:focus-visible { outline: 3px solid #f02a8b; outline-offset: 3px; }
+body.view-display.show-participants .roulette-section, body.view-display.show-participants .winner-section { display: none; }
+.camera-participants { display: flex; flex-direction: column; min-height: 0; width: 100%; flex: 1; overflow: hidden; background: #1e1d35; color: #fff; border-radius: 20px; border-top: 5px solid #f02a8b; }
+.participants-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; }
+.participants-list-heading h2 { font-size: 26px; margin: 0 0 4px; }
+.participants-list-heading p { font-size: 13px; opacity: .7; margin: 0; }
+.participants-list-heading input { width: min(260px, 42%); border: 1px solid #ffffff30; border-radius: 10px; background: #ffffff0b; color: #fff; padding: 10px 12px; font: inherit; font-size: 14px; }
+.participants-list-heading input::placeholder { color: #ffffff90; }
+.participants-table-scroll { min-height: 0; overflow: auto; flex: 1; }
+.participants-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 18px; }
+.participants-table th { position: sticky; top: 0; background: #292840; color: #9beb32; font-size: 13px; text-transform: uppercase; z-index: 1; }
+.participants-table th, .participants-table td { padding: 13px 24px; border-bottom: 1px solid #ffffff12; overflow-wrap: anywhere; }
+.participants-table th:first-child, .participants-table td:first-child { width: 80px; white-space: nowrap; }
+.participants-table tbody tr:nth-child(even) { background: #ffffff03; }
+.participants-table tbody tr.participant-is-winner { background: #9beb32; color: #1e1d35; font-weight: 700; }
+@media (max-width: 650px) { .participants-list-heading { padding: 14px; flex-wrap: wrap; } .participants-list-heading input { width: 100%; } .participants-table th, .participants-table td { padding: 10px; } .participants-table { font-size: 15px; } }
+
+.camera-list-toggle:disabled { opacity: .5; cursor: default; }

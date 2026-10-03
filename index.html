@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <!-- 4:5 OBS Aspect Ratio Container (Ideal for Side-by-side with Webcam) -->
@@ -110,7 +110,12 @@
     </header>
 
     <!-- MAIN BODY STACKED CONTENT -->
+    <button id="cameraListToggle" class="camera-list-toggle" type="button" title="Mostrar participantes" aria-label="Mostrar participantes" aria-controls="cameraParticipants" aria-expanded="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
     <main class="main-content">
+      <section id="cameraParticipants" class="camera-participants" hidden aria-label="Participantes de la ruleta">
+        <div class="participants-list-heading"><div><h2>Participantes</h2><p id="cameraParticipantCount"></p></div><input id="cameraParticipantSearch" type="search" placeholder="Buscar número o usuario" aria-label="Buscar número o usuario"></div>
+        <div class="participants-table-scroll"><table class="participants-table"><thead id="cameraParticipantHead"></thead><tbody id="cameraParticipantBody"></tbody></table></div>
+      </section>
 
       <!-- ROULETTE SECTION -->
       <section class="roulette-section">
@@ -383,6 +388,10 @@ La suerte sigue girando</textarea>
                 <select id="contactColumnSelect" class="config-select"></select>
               </div>
               <div class="config-group">
+                <label class="config-label" for="countryColumnSelect">País público (opcional)</label><select id="countryColumnSelect" class="config-select"></select>
+              </div><div class="config-group">
+                <label class="config-label" for="answerColumnSelect">Respuesta pública (opcional)</label><select id="answerColumnSelect" class="config-select"></select>
+              </div><div class="config-group">
                 <label class="config-label" for="duplicateColumnSelect">Eliminar duplicados por</label>
                 <select id="duplicateColumnSelect" class="config-select"></select>
               </div>
@@ -480,6 +489,6 @@ La suerte sigue girando</textarea>
   </div>
 
   <!-- Main JavaScript File -->
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
