@@ -207,7 +207,7 @@
     'statParticipants', 'statPrize', 'statSpins', 'rouletteCanvas', 'bulbsContainer', 'spinTriggerCap',
     'soundToggle', 'winnerCard', 'selectedNumberDisplay', 'selectedNickDisplay',
     'confirmWinnerBtn', 'hideResultToggle', 'hideStatusSubtitle', 'recentWinnersGrid', 'openHistoryBtn',
-    'openConfigBtn', 'closeConfigBtn', 'cancelConfigBtn', 'saveConfigBtn', 'configModal', 'prizeCountInput', 'prizesEditor', 'newRaffleBtn', 'downloadParticipantsBtn',
+    'openConfigBtn', 'closeConfigBtn', 'cancelConfigBtn', 'saveConfigBtn', 'configModal', 'prizeCountInput', 'prizesEditor', 'prizeConfigHint', 'newRaffleBtn', 'downloadParticipantsBtn',
     'participantsTextarea', 'modalNickCount', 'btnPreset50', 'btnPreset100', 'btnPreset1248',
     'spinDurationSelect', 'sheetsUrlInput', 'testSheetsBtn', 'sheetsStatus', 'csvFileInput',
     'cameraListToggle', 'cameraParticipants', 'cameraParticipantCount', 'cameraParticipantSearch', 'cameraParticipantHead', 'cameraParticipantBody', 'countryColumnSelect', 'answerColumnSelect',
@@ -557,6 +557,7 @@
     updateSequenceConfigStatus();
     const locked = raffleStarted();
     [DOM.prizeCountInput, DOM.participantsTextarea, DOM.csvFileInput, DOM.testSheetsBtn, DOM.applyImportBtn, DOM.btnPreset50, DOM.btnPreset100, DOM.btnPreset1248, DOM.eventTitleInput].forEach(el => el.disabled = locked);
+    DOM.prizeConfigHint.textContent = locked ? 'Hay ganadores confirmados. Para cambiar los premios o participantes, pulsa «Preparar un nuevo sorteo». El historial se conserva.' : 'Configura el nombre y los giros de cada premio. Guardar cambios reinicia los giros de prueba que aún no tengan ganador confirmado.';
     DOM.resetSequenceBtn.disabled = state.raffleComplete;
     DOM.configModal.classList.add('active');
   }
@@ -591,7 +592,7 @@
     saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); DOM.configModal.classList.remove('active');
   }
 
-  function raffleStarted() { return state.currentSequenceSpin > 0 || state.confirmedWinners.length > 0 || Boolean(state.selectedWinner) || isSpinning; }
+  function raffleStarted() { return state.confirmedWinners.length > 0 || isSpinning; }
   function readPrizesEditor() { return [...DOM.prizesEditor.querySelectorAll('.prize-editor-row')].map(row => ({ name: row.querySelector('.prize-name').value.trim() || 'Premio sorpresa', spins: Math.min(99, Math.max(1, Number(row.querySelector('.prize-spins').value) || 1)) })); }
   function renderPrizesEditor(prizes) {
     const count = Math.min(50, Math.max(1, Number(DOM.prizeCountInput.value) || 1)); DOM.prizeCountInput.value = count;
@@ -711,7 +712,11 @@
     DOM.participantsTextarea.addEventListener('input', () => { const count = DOM.participantsTextarea.value.split('\n').filter(value => value.trim()).length; DOM.modalNickCount.textContent = `${count.toLocaleString('es-PE')} nicks`; });
     DOM.btnPreset50.addEventListener('click', () => setManualParticipants(generateDemoNicks(50))); DOM.btnPreset100.addEventListener('click', () => setManualParticipants(generateDemoNicks(100)));
     DOM.btnPreset1248.addEventListener('click', () => setManualParticipants(generateDemoNicks(1248)));
-    DOM.prizeCountInput.addEventListener('input', () => renderPrizesEditor(readPrizesEditor()));
+    DOM.prizeCountInput.addEventListener('input', () => {
+      const count = Number(DOM.prizeCountInput.value);
+      if (Number.isInteger(count) && count >= 1 && count <= 50) renderPrizesEditor(readPrizesEditor());
+    });
+    DOM.prizeCountInput.addEventListener('change', () => renderPrizesEditor(readPrizesEditor()));
     DOM.downloadParticipantsBtn.addEventListener('click', exportParticipantsCSV);
     DOM.newRaffleBtn.addEventListener('click', prepareNewRaffle);
     DOM.resetSequenceBtn.addEventListener('click', () => {
