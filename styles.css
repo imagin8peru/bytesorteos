@@ -753,8 +753,8 @@ input:checked + .slider-round:before {
   line-height: 1.15;
 }
 
-.winner-card.is-losing .selected-number-row,
-.winner-card.is-losing .nick-display-container,
+.winner-card.is-losing:not(.has-selection) .selected-number-row,
+.winner-card.is-losing:not(.has-selection) .nick-display-container,
 .winner-card.is-losing .privacy-badge {
   display: none;
 }
@@ -1449,13 +1449,13 @@ body.view-display .winner-card.is-losing .result-message-text {
   font-size: clamp(1.45rem, 4vw, 2.2rem);
 }
 
-body.view-display .winner-card.is-winner .winner-card-body {
+body.view-display .winner-card.has-selection .winner-card-body {
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   grid-template-rows: 36px minmax(0, 1fr);
   grid-template-areas: "summary identity" "summary identity";
 }
 
-body.view-display .winner-card.is-winner .winner-number-summary {
+body.view-display .winner-card.has-selection .winner-number-summary {
   grid-area: summary;
   display: flex;
   flex-direction: column;
@@ -1466,7 +1466,7 @@ body.view-display .winner-card.is-winner .winner-number-summary {
   min-width: 0;
 }
 
-body.view-display .winner-card.is-winner .winner-identity-summary {
+body.view-display .winner-card.has-selection .winner-identity-summary {
   grid-area: identity;
   display: flex;
   flex-direction: column;
@@ -1479,7 +1479,7 @@ body.view-display .winner-card.is-winner .winner-identity-summary {
   min-height: 0;
 }
 
-body.view-display .winner-card.is-winner .result-message-text {
+body.view-display .winner-card.has-selection .result-message-text {
   flex-shrink: 0;
 }
 
@@ -1752,3 +1752,11 @@ body.view-display.show-participants .roulette-section, body.view-display.show-pa
 @media (max-width: 650px) { .participants-list-heading { padding: 14px; flex-wrap: wrap; } .participants-list-heading input { width: 100%; } .participants-table th, .participants-table td { padding: 10px; } .participants-table { font-size: 15px; } }
 
 .camera-list-toggle:disabled { opacity: .5; cursor: default; }
+
+.prize-editor-row { display: grid; grid-template-columns: 1fr 100px; gap: 16px; margin-bottom: 12px; }
+.prize-editor-row label { display: grid; gap: 6px; font-size: 13px; }
+.participants-download { display: grid; place-items: center; margin-left: auto; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ffffff35; background: #ffffff0b; color: white; cursor: pointer; }
+.participants-table tbody tr.participant-confirmed { background: #ffffff07; color: #92929f; }
+body.view-display .winner-card.is-losing.has-selection .result-message-text { font-size: clamp(14px, 2.2vh, 22px); }
+body.view-display .winner-card.is-losing.has-selection .ribbon-text { font-size: 14px; }
+.btn-confirm-winner:disabled { opacity: .45; cursor: default; }

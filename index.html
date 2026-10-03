@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <!-- 4:5 OBS Aspect Ratio Container (Ideal for Side-by-side with Webcam) -->
@@ -113,7 +113,7 @@
     <button id="cameraListToggle" class="camera-list-toggle" type="button" title="Mostrar participantes" aria-label="Mostrar participantes" aria-controls="cameraParticipants" aria-expanded="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
     <main class="main-content">
       <section id="cameraParticipants" class="camera-participants" hidden aria-label="Participantes de la ruleta">
-        <div class="participants-list-heading"><div><h2>Participantes</h2><p id="cameraParticipantCount"></p></div><input id="cameraParticipantSearch" type="search" placeholder="Buscar número o usuario" aria-label="Buscar número o usuario"></div>
+        <div class="participants-list-heading"><div><h2>Participantes</h2><p id="cameraParticipantCount"></p></div><button id="downloadParticipantsBtn" class="participants-download" type="button" title="Descargar lista completa" aria-label="Descargar lista completa"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button><input id="cameraParticipantSearch" type="search" placeholder="Buscar número o usuario" aria-label="Buscar número o usuario"></div>
         <div class="participants-table-scroll"><table class="participants-table"><thead id="cameraParticipantHead"></thead><tbody id="cameraParticipantBody"></tbody></table></div>
       </section>
 
@@ -217,14 +217,6 @@
 
             <!-- Action Buttons Row -->
             <div class="winner-actions-row">
-              <button class="btn btn-spin-again" id="spinAgainBtn">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                GIRAR OTRA VEZ
-              </button>
-
               <button class="btn btn-confirm-winner" id="confirmWinnerBtn">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
@@ -290,11 +282,10 @@
       <div class="modal-body">
 
         <!-- Section 1: General Prize Settings -->
-        <div class="config-group">
-          <label class="config-label" for="prizeInput">Nombre del Premio Actual:</label>
-          <input type="text" id="prizeInput" class="config-input" value="Teclado mecánico" placeholder="Ej. Audífonos Gamer, Gift Card $50">
-        </div>
-
+        <div class="config-group"><label class="config-label" for="prizeCountInput">Cantidad de premios / ganadores</label><input id="prizeCountInput" type="number" min="1" max="50" value="1" class="config-input"></div>
+        <div id="prizesEditor"></div>
+        <p class="config-hint">Cada premio tiene su propia secuencia. Los ganadores confirmados conservan su número y no vuelven a participar.</p>
+        <button id="newRaffleBtn" type="button" class="btn-secondary">Preparar un nuevo sorteo</button>
         <div class="config-group">
           <label class="config-label" for="eventTitleInput">Titular visible del sorteo:</label>
           <input type="text" id="eventTitleInput" class="config-input" value="Sorteo Cooler Master 50 Aniversario" placeholder="Ej. Sorteo Cooler Master 50 Aniversario">
@@ -309,10 +300,6 @@
             <span class="sequence-live-badge" id="sequenceConfigStatus">Giro 0 de 5</span>
           </div>
           <div class="mapping-grid sequence-grid">
-            <div class="config-group">
-              <label class="config-label" for="winningSpinInput">El ganador aparecerá en el giro</label>
-              <input type="number" id="winningSpinInput" class="config-input" min="1" max="99" value="5">
-            </div>
             <div class="config-group">
               <label class="config-label" for="winnerMessageInput">Mensaje ganador</label>
               <input type="text" id="winnerMessageInput" class="config-input" value="¡Ganaste!" placeholder="¡Ganaste!">
@@ -489,6 +476,6 @@ La suerte sigue girando</textarea>
   </div>
 
   <!-- Main JavaScript File -->
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

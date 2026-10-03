@@ -43,6 +43,7 @@
       { spin: 22, number: 28, nick: 'CodeMaster', contact: 'code@example.com', prize: 'Teclado mecánico', eventTitle: 'Sorteo Cooler Master 50 Aniversario', registeredAt: '2026-10-01T12:41:07-05:00' },
       { spin: 21, number: 11, nick: 'LindaGamer', contact: 'linda@example.com', prize: 'Teclado mecánico', eventTitle: 'Sorteo Cooler Master 50 Aniversario', registeredAt: '2026-10-01T12:36:52-05:00' }
     ],
+    prizes: null, currentPrizeIndex: 0, confirmedWinners: [], raffleComplete: false, selectedParticipant: null,
     selectedWinner: null,
     soundEnabled: true,
     hideResult: false,
@@ -58,6 +59,15 @@
   };
 
   let state = loadStateFromStorage();
+  function activePrize() { return state.prizes[state.currentPrizeIndex] || state.prizes[state.prizes.length - 1]; }
+  function syncPrize() { const prize = activePrize(); state.prizeName = prize.name; state.winningSpinNumber = prize.spins; }
+  function eligibleIndexes() { const excluded = new Set(state.confirmedWinners.map(item => item.index)); return state.participants.map((_, index) => index).filter(index => !excluded.has(index)); }
+  function normalizeRaffle(data) {
+    data.prizes = Array.isArray(data.prizes) && data.prizes.length ? data.prizes.map((p, i) => ({ name: String(p.name || `Premio ${i + 1}`), spins: Math.min(99, Math.max(1, Number(p.spins) || 1)) })) : [{ name: data.prizeName, spins: Math.max(1, Number(data.winningSpinNumber) || 1) }];
+    data.currentPrizeIndex = Math.min(data.prizes.length - 1, Math.max(0, Number(data.currentPrizeIndex) || 0));
+    data.confirmedWinners = Array.isArray(data.confirmedWinners) ? data.confirmedWinners : [];
+    return data;
+  }
   let importedRows = [];
   let importedHeaders = [];
   let filteredImport = { participants: [], contacts: [], filtered: 0, duplicates: 0 };
@@ -75,12 +85,12 @@
         };
         restored.participantContacts = restored.participants.map((_, index) => String(saved.participantContacts?.[index] || ''));
         restored.participantDetails = restored.participants.map((_, index) => ({ country: String(saved.participantDetails?.[index]?.country || ''), answer: String(saved.participantDetails?.[index]?.answer || '') }));
-        return restored;
+        return normalizeRaffle(restored);
       }
     } catch (error) {
       console.warn('No se pudo recuperar la configuración local:', error);
     }
-    return { ...DEFAULT_STATE, participants: [...DEFAULT_STATE.participants], participantContacts: [...DEFAULT_STATE.participantContacts] };
+    return normalizeRaffle({ ...DEFAULT_STATE, participants: [...DEFAULT_STATE.participants], participantContacts: [...DEFAULT_STATE.participantContacts], confirmedWinners: [] });
   }
 
   function saveStateToStorage() {
@@ -195,9 +205,9 @@
 
   const elementIds = [
     'statParticipants', 'statPrize', 'statSpins', 'rouletteCanvas', 'bulbsContainer', 'spinTriggerCap',
-    'soundToggle', 'winnerCard', 'selectedNumberDisplay', 'selectedNickDisplay', 'spinAgainBtn',
+    'soundToggle', 'winnerCard', 'selectedNumberDisplay', 'selectedNickDisplay',
     'confirmWinnerBtn', 'hideResultToggle', 'hideStatusSubtitle', 'recentWinnersGrid', 'openHistoryBtn',
-    'openConfigBtn', 'closeConfigBtn', 'cancelConfigBtn', 'saveConfigBtn', 'configModal', 'prizeInput',
+    'openConfigBtn', 'closeConfigBtn', 'cancelConfigBtn', 'saveConfigBtn', 'configModal', 'prizeCountInput', 'prizesEditor', 'newRaffleBtn', 'downloadParticipantsBtn',
     'participantsTextarea', 'modalNickCount', 'btnPreset50', 'btnPreset100', 'btnPreset1248',
     'spinDurationSelect', 'sheetsUrlInput', 'testSheetsBtn', 'sheetsStatus', 'csvFileInput',
     'cameraListToggle', 'cameraParticipants', 'cameraParticipantCount', 'cameraParticipantSearch', 'cameraParticipantHead', 'cameraParticipantBody', 'countryColumnSelect', 'answerColumnSelect',
@@ -206,7 +216,7 @@
     'importPreview', 'previewLimitNote', 'applyImportBtn', 'clearHistoryBtn', 'resetAllBtn',
     'historyModal', 'closeHistoryBtn', 'closeHistoryFooterBtn', 'fullHistoryTableBody', 'fullHistoryCount',
     'exportCsvBtn', 'wheelDataNote', 'openDisplayBtn', 'eventTitleDisplay', 'spinProgressDisplay',
-    'resultRibbonText', 'resultMessageDisplay', 'eventTitleInput', 'winningSpinInput',
+    'resultRibbonText', 'resultMessageDisplay', 'eventTitleInput',
     'winnerMessageInput', 'losingMessagesTextarea', 'resetSequenceBtn', 'sequenceConfigStatus'
   ];
   const DOM = Object.fromEntries(elementIds.map(id => [id === 'rouletteCanvas' ? 'canvas' : id, document.getElementById(id)]));
@@ -235,7 +245,7 @@
     ctx.clearRect(0, 0, width, width);
     ctx.save(); ctx.translate(center, center); ctx.rotate(rotationAngle);
     for (let i = 0; i < total; i += 1) {
-      const start = i * sliceAngle, end = start + sliceAngle, colors = SEGMENT_COLORS[i % 3];
+      const start = i * sliceAngle, end = start + sliceAngle, colors = state.confirmedWinners.some(item => item.index === i) ? { bg: '#626271', text: '#b8b8c1' } : SEGMENT_COLORS[i % 3];
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, radius, start, end); ctx.closePath();
       ctx.fillStyle = colors.bg; ctx.fill();
       ctx.lineWidth = total > 180 ? 0.35 : total > 60 ? 0.8 : 2.2;
@@ -259,14 +269,17 @@
 
   function spinRoulette() {
     if (isSpinning || (VIEW_MODE === 'display' && !DOM.cameraParticipants.hidden)) return;
-    if (!state.participants.length) return alert('No hay participantes válidos. Importa o agrega una lista antes de girar.');
+    if (state.raffleComplete) return;
+    syncPrize();
+    const eligible = eligibleIndexes();
+    if (!eligible.length) return alert('No hay participantes válidos. Importa o agrega una lista antes de girar.');
     const winningSpin = Math.max(1, Number(state.winningSpinNumber) || 1);
     if (state.displayResult?.type === 'winner' && state.currentSequenceSpin >= winningSpin) {
       if (VIEW_MODE === 'control') alert('Confirma el ganador o reinicia la secuencia antes de volver a girar.');
       return;
     }
     isSpinning = true; DOM.cameraListToggle.disabled = true; audioSynth.initCtx();
-    const total = state.participants.length, winnerIndex = Math.floor(Math.random() * total);
+    const total = state.participants.length, winnerIndex = eligible[Math.floor(Math.random() * eligible.length)];
     const sequenceSpin = Math.min(state.currentSequenceSpin + 1, winningSpin);
     const isWinnerSpin = sequenceSpin === winningSpin;
     const sliceAngle = 2 * Math.PI / total, pointerAngle = 3 * Math.PI / 2;
@@ -293,6 +306,7 @@
         clearInterval(bulbInterval); isSpinning = false; DOM.cameraListToggle.disabled = false; renderOuterBulbs();
         state.currentSequenceSpin = sequenceSpin;
         if (isWinnerSpin) {
+          state.selectedParticipant = null;
           state.selectedWinner = {
             number: winnerIndex + 1,
             nick: state.participants[winnerIndex],
@@ -304,6 +318,7 @@
           const messages = state.losingMessages?.filter(Boolean) || [];
           const message = messages.length ? messages[(sequenceSpin - 1) % messages.length] : 'Esta vez no…';
           state.selectedWinner = null;
+          state.selectedParticipant = { index: winnerIndex, number: winnerIndex + 1, nick: state.participants[winnerIndex] };
           state.displayResult = { type: 'losing', message, spin: sequenceSpin };
         }
         state.spinsCount += 1; saveStateToStorage(); updateUI(); audioSynth.playFanfare();
@@ -316,7 +331,7 @@
 
   function confirmCurrentWinner() {
     const winner = state.selectedWinner;
-    if (!winner || winner.index < 0 || !state.participants[winner.index]) return;
+    if (isSpinning || !winner || winner.index < 0 || !state.participants[winner.index] || state.confirmedWinners.some(item => item.index === winner.index) || state.raffleComplete) return;
     const historyItem = {
       spin: state.spinsCount,
       number: winner.number,
@@ -327,12 +342,14 @@
       contact: winner.contact || state.participantContacts?.[winner.index] || ''
     };
     state.winnersHistory.unshift(historyItem);
-    state.participants.splice(winner.index, 1);
-    state.participantDetails.splice(winner.index, 1);
-    if (Array.isArray(state.participantContacts)) state.participantContacts.splice(winner.index, 1);
+    state.confirmedWinners.push({ ...historyItem, index: winner.index, prizeIndex: state.currentPrizeIndex });
+    state.raffleComplete = state.currentPrizeIndex === state.prizes.length - 1;
+    if (!state.raffleComplete) state.currentPrizeIndex += 1;
+    syncPrize();
+    state.selectedParticipant = null;
     state.selectedWinner = null;
     state.currentSequenceSpin = 0;
-    state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
+    state.displayResult = state.raffleComplete ? { type: 'complete', message: 'Sorteo finalizado · ¡Gracias por participar!', spin: 0 } : { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
     SheetsService.pushWinner(state.googleSheetsUrl, historyItem); saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle);
   }
 
@@ -362,26 +379,30 @@
   }
 
   function updateUI() {
+    syncPrize();
     const total = state.participants.length;
     const winningSpin = Math.max(1, Number(state.winningSpinNumber) || 1);
     const nextSequenceSpin = Math.min(state.currentSequenceSpin + 1, winningSpin);
     DOM.statParticipants.textContent = total.toLocaleString('es-PE');
     DOM.statPrize.textContent = state.prizeName;
-    DOM.statSpins.textContent = `${nextSequenceSpin} DE ${winningSpin}`;
+    DOM.statSpins.textContent = state.raffleComplete ? 'FINALIZADO' : `PREMIO ${state.currentPrizeIndex + 1}/${state.prizes.length} · GIRO ${state.selectedWinner ? winningSpin : nextSequenceSpin}/${winningSpin}`;
+    DOM.confirmWinnerBtn.disabled = !state.selectedWinner || state.raffleComplete || isSpinning;
     DOM.eventTitleDisplay.textContent = state.eventTitle || 'Sorteo en vivo';
     DOM.wheelDataNote.textContent = total <= 18 ? `${total.toLocaleString('es-PE')} participantes · nombres visibles` : `${total.toLocaleString('es-PE')} participantes · vista numérica`;
     const result = state.displayResult || DEFAULT_STATE.displayResult;
+    const selected = state.selectedWinner || (result.type === 'losing' ? state.selectedParticipant : null);
+    DOM.winnerCard.classList.toggle('has-selection', Boolean(selected));
     DOM.winnerCard.classList.toggle('is-winner', result.type === 'winner');
     DOM.winnerCard.classList.toggle('is-losing', result.type !== 'winner');
     DOM.resultMessageDisplay.textContent = result.message || '';
-    if (result.type === 'winner' && state.selectedWinner) {
-      DOM.resultRibbonText.textContent = '¡GANADOR!';
-      DOM.selectedNumberDisplay.textContent = `N.º ${state.selectedWinner.number}`;
-      DOM.selectedNickDisplay.textContent = state.hideResult ? '••••••••••••' : (state.selectedWinner.nick || '---');
+    if (selected) {
+      DOM.resultRibbonText.textContent = result.type === 'winner' ? '¡GANADOR!' : `GIRO ${result.spin} · SIN PREMIO`;
+      DOM.selectedNumberDisplay.textContent = `N.º ${selected.number}`;
+      DOM.selectedNickDisplay.textContent = state.hideResult ? '••••••••••••' : (selected.nick || '---');
       DOM.hideStatusSubtitle.textContent = state.hideResult ? 'El resultado está oculto para OBS' : 'El resultado se mostrará públicamente';
       DOM.spinProgressDisplay.textContent = `GIRO GANADOR · ${winningSpin} DE ${winningSpin}`;
     } else {
-      DOM.resultRibbonText.textContent = result.type === 'losing' ? `GIRO ${result.spin} DE ${winningSpin}` : 'LISTOS PARA GIRAR';
+      DOM.resultRibbonText.textContent = state.raffleComplete ? 'SORTEO FINALIZADO' : 'LISTOS PARA GIRAR';
       DOM.selectedNumberDisplay.textContent = '';
       DOM.selectedNickDisplay.textContent = '';
       const nextSpin = Math.min(state.currentSequenceSpin + 1, winningSpin);
@@ -524,28 +545,34 @@
   }
 
   function openConfigModal() {
-    DOM.prizeInput.value = state.prizeName; DOM.participantsTextarea.value = state.participants.join('\n');
+    DOM.prizeCountInput.value = state.prizes.length; renderPrizesEditor(state.prizes);
+    DOM.participantsTextarea.value = state.participants.join('\n');
     draftParticipantEntries = state.participants.map((nick, index) => ({ nick, contact: state.participantContacts?.[index] || '', details: state.participantDetails?.[index] || {} }));
     DOM.modalNickCount.textContent = `${state.participants.length.toLocaleString('es-PE')} nicks`; DOM.spinDurationSelect.value = state.spinDurationSeconds;
     DOM.sheetsUrlInput.value = state.googleSheetsUrl || '';
     DOM.eventTitleInput.value = state.eventTitle || '';
-    DOM.winningSpinInput.value = Math.max(1, Number(state.winningSpinNumber) || 1);
+
     DOM.winnerMessageInput.value = state.winnerMessage || '¡Ganaste!';
     DOM.losingMessagesTextarea.value = (state.losingMessages || []).join('\n');
     updateSequenceConfigStatus();
+    const locked = raffleStarted();
+    [DOM.prizeCountInput, DOM.participantsTextarea, DOM.csvFileInput, DOM.testSheetsBtn, DOM.applyImportBtn, DOM.btnPreset50, DOM.btnPreset100, DOM.btnPreset1248, DOM.eventTitleInput].forEach(el => el.disabled = locked);
+    DOM.resetSequenceBtn.disabled = state.raffleComplete;
     DOM.configModal.classList.add('active');
   }
 
   function updateSequenceConfigStatus() {
-    const winningSpin = Math.max(1, Number(DOM.winningSpinInput.value) || 1);
+    const winningSpin = activePrize().spins;
     DOM.sequenceConfigStatus.textContent = `Giro ${Math.min(state.currentSequenceSpin, winningSpin)} de ${winningSpin}`;
   }
 
   function saveConfig() {
     const participants = DOM.participantsTextarea.value.split('\n').map(value => value.trim()).filter(Boolean);
-    state.prizeName = DOM.prizeInput.value.trim() || 'Premio sorpresa'; state.spinDurationSeconds = Number(DOM.spinDurationSelect.value) || 6;
+    const locked = raffleStarted();
+    if (!locked) { state.prizes = readPrizesEditor(); state.currentPrizeIndex = 0; state.confirmedWinners = []; state.raffleComplete = false; }
+    state.spinDurationSeconds = Number(DOM.spinDurationSelect.value) || 6;
     state.eventTitle = DOM.eventTitleInput.value.trim() || 'Sorteo en vivo';
-    state.winningSpinNumber = Math.min(99, Math.max(1, Number(DOM.winningSpinInput.value) || 1));
+
     state.winnerMessage = DOM.winnerMessageInput.value.trim() || '¡Ganaste!';
     state.losingMessages = DOM.losingMessagesTextarea.value.split('\n').map(value => value.trim()).filter(Boolean);
     const entryQueues = new Map();
@@ -555,14 +582,49 @@
       entryQueues.get(key).push(entry);
     });
     state.googleSheetsUrl = DOM.sheetsUrlInput.value.trim();
-    state.participants = participants;
-    const entries = participants.map(nick => entryQueues.get(normalized(nick))?.shift() || {});
+    if (!locked) state.participants = participants;
+    const entries = state.participants.map(nick => entryQueues.get(normalized(nick))?.shift() || {});
     state.participantContacts = entries.map(entry => entry.contact || '');
     state.participantDetails = entries.map(entry => ({ country: entry.details?.country || '', answer: entry.details?.answer || '' }));
-    state.currentSequenceSpin = 0;
-    state.selectedWinner = null;
-    state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
+    if (!locked) { state.currentSequenceSpin = 0; state.selectedWinner = null; state.selectedParticipant = null; state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 }; }
+    syncPrize();
     saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); DOM.configModal.classList.remove('active');
+  }
+
+  function raffleStarted() { return state.currentSequenceSpin > 0 || state.confirmedWinners.length > 0 || Boolean(state.selectedWinner) || isSpinning; }
+  function readPrizesEditor() { return [...DOM.prizesEditor.querySelectorAll('.prize-editor-row')].map(row => ({ name: row.querySelector('.prize-name').value.trim() || 'Premio sorpresa', spins: Math.min(99, Math.max(1, Number(row.querySelector('.prize-spins').value) || 1)) })); }
+  function renderPrizesEditor(prizes) {
+    const count = Math.min(50, Math.max(1, Number(DOM.prizeCountInput.value) || 1)); DOM.prizeCountInput.value = count;
+    DOM.prizesEditor.innerHTML = '';
+    for (let i = 0; i < count; i += 1) {
+      const row = document.createElement('div'); row.className = 'prize-editor-row';
+      row.innerHTML = `<label>Premio ${i + 1}<input class="config-input prize-name" aria-label="Nombre del premio ${i + 1}" maxlength="120"></label><label>Giros<input class="config-input prize-spins" aria-label="Giros del premio ${i + 1}" type="number" min="1" max="99"></label>`;
+      row.querySelector('.prize-name').value = prizes[i]?.name || `Premio ${i + 1}`; row.querySelector('.prize-spins').value = prizes[i]?.spins || 1;
+      row.querySelectorAll('input').forEach(el => el.disabled = raffleStarted()); DOM.prizesEditor.appendChild(row);
+    }
+  }
+  function prepareNewRaffle() {
+    if (isSpinning || !confirm('¿Preparar un nuevo sorteo? Descarga la lista actual antes: se restablecerán ganadores y elegibilidad. El historial se conserva.')) return;
+    state.confirmedWinners = []; state.currentPrizeIndex = 0; state.raffleComplete = false; state.currentSequenceSpin = 0; state.selectedWinner = null; state.selectedParticipant = null;
+    state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
+    syncPrize(); saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); openConfigModal();
+  }
+  function participantsCSV() {
+    const quote = value => { let text = String(value ?? ''); if (/^[=+@\-\t\r]/.test(text)) text = "'" + text; return `"${text.replace(/"/g, '""')}"`; };
+    const country = Boolean(state.importConfig.countryColumn) || state.participantDetails.some(item => item.country);
+    const answer = Boolean(state.importConfig.answerColumn) || state.participantDetails.some(item => item.answer);
+    const header = ['Número', 'Usuario', ...(country ? ['País'] : []), ...(answer ? ['Respuesta'] : []), 'Estado', 'Premio', 'Fecha de confirmación', 'Sorteo'];
+    const rows = state.participants.map((nick, index) => {
+      const winner = state.confirmedWinners.find(item => item.index === index), detail = state.participantDetails[index] || {};
+      return [index + 1, nick, ...(country ? [detail.country || ''] : []), ...(answer ? [detail.answer || ''] : []), winner ? 'Ganador confirmado' : 'Participante habilitado', winner?.prize || '', winner?.registeredAt || '', state.eventTitle];
+    });
+    return '\uFEFF' + [header, ...rows].map(row => row.map(quote).join(',')).join('\r\n');
+  }
+  function exportParticipantsCSV() {
+    const url = URL.createObjectURL(new Blob([participantsCSV()], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url;
+    const name = (state.eventTitle || 'sorteo').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 80);
+    link.download = `participantes_${name}_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function exportHistoryToCSV() {
@@ -594,7 +656,7 @@
     const query = normalized(DOM.cameraParticipantSearch.value);
     DOM.cameraParticipantHead.innerHTML = ''; DOM.cameraParticipantBody.innerHTML = '';
     const heading = document.createElement('tr');
-    const columns = ['N.º', 'Usuario', ...(country ? ['País'] : []), ...(answer ? ['Respuesta'] : [])];
+    const columns = ['N.º', 'Usuario', 'Estado', 'Premio', ...(country ? ['País'] : []), ...(answer ? ['Respuesta'] : [])];
     columns.forEach(label => { const cell = document.createElement('th'); cell.scope = 'col'; cell.textContent = label; heading.appendChild(cell); });
     DOM.cameraParticipantHead.appendChild(heading);
     const fragment = document.createDocumentFragment();
@@ -603,10 +665,12 @@
       const number = index + 1;
       if (query && (/^\d+$/.test(query) ? String(number) !== query : !normalized(nick).includes(query))) return;
       const row = document.createElement('tr');
+      const confirmed = state.confirmedWinners.find(item => item.index === index);
+      if (confirmed) row.className = 'participant-confirmed';
       if (!state.hideResult && state.displayResult.type === 'winner' && state.selectedWinner?.index === index) {
         row.className = 'participant-is-winner'; row.setAttribute('aria-label', `Ganador: número ${number}, ${nick}`); winnerRow = row;
       }
-      [number, nick, ...(country ? [details[index]?.country || '—'] : []), ...(answer ? [details[index]?.answer || '—'] : [])].forEach(value => {
+      [number, nick, confirmed ? 'Ya ganó' : 'Participando', confirmed?.prize || '—', ...(country ? [details[index]?.country || '—'] : []), ...(answer ? [details[index]?.answer || '—'] : [])].forEach(value => {
         const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell);
       });
       fragment.appendChild(row); shown += 1;
@@ -638,7 +702,7 @@
       document.fonts.ready.then(fitCameraResultText);
     }
     DOM.spinTriggerCap.addEventListener('click', spinRoulette); DOM.canvas.addEventListener('click', spinRoulette);
-    DOM.spinAgainBtn.addEventListener('click', spinRoulette); DOM.confirmWinnerBtn.addEventListener('click', confirmCurrentWinner);
+    DOM.confirmWinnerBtn.addEventListener('click', confirmCurrentWinner);
     DOM.soundToggle.addEventListener('change', event => { state.soundEnabled = event.target.checked; saveStateToStorage(); });
     DOM.hideResultToggle.addEventListener('change', event => { state.hideResult = event.target.checked; saveStateToStorage(); updateUI(); });
     DOM.openConfigBtn.addEventListener('click', openConfigModal); DOM.closeConfigBtn.addEventListener('click', () => DOM.configModal.classList.remove('active'));
@@ -647,10 +711,13 @@
     DOM.participantsTextarea.addEventListener('input', () => { const count = DOM.participantsTextarea.value.split('\n').filter(value => value.trim()).length; DOM.modalNickCount.textContent = `${count.toLocaleString('es-PE')} nicks`; });
     DOM.btnPreset50.addEventListener('click', () => setManualParticipants(generateDemoNicks(50))); DOM.btnPreset100.addEventListener('click', () => setManualParticipants(generateDemoNicks(100)));
     DOM.btnPreset1248.addEventListener('click', () => setManualParticipants(generateDemoNicks(1248)));
-    DOM.winningSpinInput.addEventListener('input', updateSequenceConfigStatus);
+    DOM.prizeCountInput.addEventListener('input', () => renderPrizesEditor(readPrizesEditor()));
+    DOM.downloadParticipantsBtn.addEventListener('click', exportParticipantsCSV);
+    DOM.newRaffleBtn.addEventListener('click', prepareNewRaffle);
     DOM.resetSequenceBtn.addEventListener('click', () => {
+      if (state.raffleComplete || isSpinning) return;
       state.currentSequenceSpin = 0;
-      state.selectedWinner = null;
+      state.selectedWinner = null; state.selectedParticipant = null;
       state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 };
       saveStateToStorage(); updateSequenceConfigStatus(); updateUI();
     });
@@ -676,7 +743,7 @@
     DOM.clearHistoryBtn.addEventListener('click', () => { if (confirm('¿Limpiar todo el historial de ganadores?')) { state.winnersHistory = []; saveStateToStorage(); updateUI(); } });
     DOM.resetAllBtn.addEventListener('click', () => {
       if (!confirm('¿Restablecer participantes, filtros e historial?')) return;
-      state = { ...DEFAULT_STATE, participants: generateDemoNicks(1248), participantContacts: Array(1248).fill(''), participantDetails: [], importConfig: { ...DEFAULT_STATE.importConfig } };
+      state = normalizeRaffle({ ...DEFAULT_STATE, participants: generateDemoNicks(1248), participantContacts: Array(1248).fill(''), participantDetails: [], confirmedWinners: [], importConfig: { ...DEFAULT_STATE.importConfig } });
       saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); DOM.configModal.classList.remove('active');
     });
     DOM.openHistoryBtn.addEventListener('click', () => { renderFullHistoryTable(); DOM.historyModal.classList.add('active'); });
