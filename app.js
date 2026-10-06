@@ -54,6 +54,7 @@
     winningSpinNumber: 5,
     currentSequenceSpin: 0,
     losingMessages: ['Perdiste, pendejo 😜', 'Todavía no…', '¡Casi, casi!', 'La suerte sigue girando'],
+    winnerTitle: '¡GANADOR!',
     winnerMessage: '¡Ganaste!',
     displayResult: { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 }
   };
@@ -217,7 +218,7 @@
     'historyModal', 'closeHistoryBtn', 'closeHistoryFooterBtn', 'fullHistoryTableBody', 'fullHistoryCount',
     'exportCsvBtn', 'wheelDataNote', 'openDisplayBtn', 'eventTitleDisplay', 'spinProgressDisplay',
     'resultRibbonText', 'resultMessageDisplay', 'eventTitleInput',
-    'winnerMessageInput', 'losingMessagesTextarea', 'resetSequenceBtn', 'sequenceConfigStatus'
+    'winnerTitleInput', 'winnerMessageInput', 'losingMessagesTextarea', 'resetSequenceBtn', 'sequenceConfigStatus'
   ];
   const DOM = Object.fromEntries(elementIds.map(id => [id === 'rouletteCanvas' ? 'canvas' : id, document.getElementById(id)]));
 
@@ -315,8 +316,7 @@
           };
           state.displayResult = { type: 'winner', message: state.winnerMessage || '¡Ganaste!', spin: sequenceSpin };
         } else {
-          const messages = state.losingMessages?.filter(Boolean) || [];
-          const message = messages.length ? messages[(sequenceSpin - 1) % messages.length] : 'Esta vez no…';
+          const message = pickLosingMessage();
           state.selectedWinner = null;
           state.selectedParticipant = { index: winnerIndex, number: winnerIndex + 1, nick: state.participants[winnerIndex] };
           state.displayResult = { type: 'losing', message, spin: sequenceSpin };
@@ -396,7 +396,7 @@
     DOM.winnerCard.classList.toggle('is-losing', result.type !== 'winner');
     DOM.resultMessageDisplay.textContent = result.message || '';
     if (selected) {
-      DOM.resultRibbonText.textContent = result.type === 'winner' ? '¡GANADOR!' : `GIRO ${result.spin} · SIN PREMIO`;
+      DOM.resultRibbonText.textContent = result.type === 'winner' ? (state.winnerTitle || '¡GANADOR!') : `GIRO ${result.spin} · SIN PREMIO`;
       DOM.selectedNumberDisplay.textContent = `N.º ${selected.number}`;
       DOM.selectedNickDisplay.textContent = state.hideResult ? '••••••••••••' : (selected.nick || '---');
       DOM.hideStatusSubtitle.textContent = state.hideResult ? 'El resultado está oculto para OBS' : 'El resultado se mostrará públicamente';
@@ -552,6 +552,7 @@
     DOM.sheetsUrlInput.value = state.googleSheetsUrl || '';
     DOM.eventTitleInput.value = state.eventTitle || '';
 
+    DOM.winnerTitleInput.value = state.winnerTitle || '¡GANADOR!';
     DOM.winnerMessageInput.value = state.winnerMessage || '¡Ganaste!';
     DOM.losingMessagesTextarea.value = (state.losingMessages || []).join('\n');
     updateSequenceConfigStatus();
@@ -559,6 +560,7 @@
     [DOM.prizeCountInput, DOM.participantsTextarea, DOM.csvFileInput, DOM.testSheetsBtn, DOM.applyImportBtn, DOM.btnPreset50, DOM.btnPreset100, DOM.btnPreset1248, DOM.eventTitleInput].forEach(el => el.disabled = locked);
     DOM.prizeConfigHint.textContent = locked ? 'Hay ganadores confirmados. Para cambiar los premios o participantes, pulsa «Preparar un nuevo sorteo». El historial se conserva.' : 'Configura el nombre y los giros de cada premio. Guardar cambios reinicia los giros de prueba que aún no tengan ganador confirmado.';
     DOM.resetSequenceBtn.disabled = state.raffleComplete;
+    enhanceNumberInput(DOM.prizeCountInput);
     DOM.configModal.classList.add('active');
   }
 
@@ -574,6 +576,7 @@
     state.spinDurationSeconds = Number(DOM.spinDurationSelect.value) || 6;
     state.eventTitle = DOM.eventTitleInput.value.trim() || 'Sorteo en vivo';
 
+    state.winnerTitle = DOM.winnerTitleInput.value.trim() || '¡GANADOR!';
     state.winnerMessage = DOM.winnerMessageInput.value.trim() || '¡Ganaste!';
     state.losingMessages = DOM.losingMessagesTextarea.value.split('\n').map(value => value.trim()).filter(Boolean);
     const entryQueues = new Map();
@@ -588,8 +591,39 @@
     state.participantContacts = entries.map(entry => entry.contact || '');
     state.participantDetails = entries.map(entry => ({ country: entry.details?.country || '', answer: entry.details?.answer || '' }));
     if (!locked) { state.currentSequenceSpin = 0; state.selectedWinner = null; state.selectedParticipant = null; state.displayResult = { type: 'ready', message: 'El ganador se revelará en el giro final', spin: 0 }; }
+    if (locked && state.displayResult.type === 'winner') state.displayResult.message = state.winnerMessage;
     syncPrize();
     saveStateToStorage(); updateUI(); drawRouletteWheel(currentAngle); DOM.configModal.classList.remove('active');
+  }
+
+  function pickLosingMessage(random = Math.random) {
+    const messages = (state.losingMessages || []).map(value => String(value).trim()).filter(Boolean);
+    return messages.length ? messages[Math.floor(random() * messages.length)] : 'Esta vez no…';
+  }
+
+  function enhanceNumberInput(input) {
+    if (input.parentElement.classList.contains('number-stepper')) {
+      input.parentElement.querySelectorAll('button').forEach(button => button.disabled = input.disabled);
+      return;
+    }
+    const wrapper = document.createElement('div'); wrapper.className = 'number-stepper';
+    input.replaceWith(wrapper); wrapper.appendChild(input);
+    const arrows = document.createElement('div'); arrows.className = 'number-stepper-arrows';
+    const label = input.getAttribute('aria-label') || 'Cantidad de premios';
+    [['Aumentar', 1, 'M4 9l4-4 4 4'], ['Disminuir', -1, 'M4 7l4 4 4-4']].forEach(([action, direction, path]) => {
+      const button = document.createElement('button'); button.type = 'button'; button.disabled = input.disabled;
+      button.setAttribute('aria-label', `${action}: ${label}`); button.title = `${action}: ${label}`;
+      button.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="${path}"/></svg>`;
+      button.addEventListener('click', () => {
+        if (input.disabled) return;
+        const min = Number(input.min) || 1, max = Number(input.max) || 99;
+        input.value = Math.min(max, Math.max(min, (Number(input.value) || min) + direction));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      arrows.appendChild(button);
+    });
+    wrapper.appendChild(arrows);
   }
 
   function raffleStarted() { return state.confirmedWinners.length > 0 || isSpinning; }
@@ -602,6 +636,7 @@
       row.innerHTML = `<label>Premio ${i + 1}<input class="config-input prize-name" aria-label="Nombre del premio ${i + 1}" maxlength="120"></label><label>Giros<input class="config-input prize-spins" aria-label="Giros del premio ${i + 1}" type="number" min="1" max="99"></label>`;
       row.querySelector('.prize-name').value = prizes[i]?.name || `Premio ${i + 1}`; row.querySelector('.prize-spins').value = prizes[i]?.spins || 1;
       row.querySelectorAll('input').forEach(el => el.disabled = raffleStarted()); DOM.prizesEditor.appendChild(row);
+      enhanceNumberInput(row.querySelector('.prize-spins'));
     }
   }
   function prepareNewRaffle() {

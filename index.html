@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <!-- 4:5 OBS Aspect Ratio Container (Ideal for Side-by-side with Webcam) -->
@@ -282,6 +282,32 @@
       <div class="modal-body">
 
         <!-- Section 1: General Prize Settings -->
+        <div class="sequence-config-box">
+          <div class="sequence-config-header">
+            <div>
+              <h3>Mensajes de los resultados</h3>
+              <p class="config-hint">Personaliza los textos que aparecen encima del usuario elegido. Los giros sin premio no eliminan participantes.</p>
+            </div>
+            <span class="sequence-live-badge" id="sequenceConfigStatus">Giro 0 de 5</span>
+          </div>
+          <div class="mapping-grid sequence-grid">
+            <div class="config-group"><label class="config-label" for="winnerTitleInput">Título de la etiqueta del ganador</label><input id="winnerTitleInput" type="text" class="config-input" maxlength="60" placeholder="¡GANADOR!"></div>
+            <div class="config-group">
+              <label class="config-label" for="winnerMessageInput">Frase sobre el usuario ganador</label>
+              <input type="text" id="winnerMessageInput" class="config-input" value="¡Ganaste!" placeholder="¡Ganaste!">
+            </div>
+          </div>
+          <div class="config-group">
+            <label class="config-label" for="losingMessagesTextarea">Frases para los giros sin premio (una por línea)</label>
+            <textarea id="losingMessagesTextarea" class="config-textarea" rows="4" placeholder="Uno por línea">Perdiste, pendejo 😜
+Todavía no…
+¡Casi, casi!
+La suerte sigue girando</textarea>
+            <p class="config-hint">En cada giro sin premio se elegirá una frase al azar de esta lista. Debajo aparecerá el usuario seleccionado, que sigue participando.</p>
+          </div>
+          <button type="button" class="btn-secondary" id="resetSequenceBtn">Reiniciar secuencia al giro 1</button>
+        </div>
+
         <div class="config-group"><label class="config-label" for="prizeCountInput">Cantidad de premios / ganadores</label><input id="prizeCountInput" type="number" min="1" max="50" value="1" class="config-input"></div>
         <div id="prizesEditor"></div>
         <p id="prizeConfigHint" class="config-hint">Cada premio tiene su propia secuencia. Los ganadores confirmados conservan su número y no vuelven a participar.</p>
@@ -289,31 +315,6 @@
         <div class="config-group">
           <label class="config-label" for="eventTitleInput">Titular visible del sorteo:</label>
           <input type="text" id="eventTitleInput" class="config-input" value="Sorteo Cooler Master 50 Aniversario" placeholder="Ej. Sorteo Cooler Master 50 Aniversario">
-        </div>
-
-        <div class="sequence-config-box">
-          <div class="sequence-config-header">
-            <div>
-              <h3>Secuencia de giros</h3>
-              <p class="config-hint">Define en qué giro se revela el ganador. Los anteriores son parte del espectáculo y no eliminan participantes.</p>
-            </div>
-            <span class="sequence-live-badge" id="sequenceConfigStatus">Giro 0 de 5</span>
-          </div>
-          <div class="mapping-grid sequence-grid">
-            <div class="config-group">
-              <label class="config-label" for="winnerMessageInput">Mensaje ganador</label>
-              <input type="text" id="winnerMessageInput" class="config-input" value="¡Ganaste!" placeholder="¡Ganaste!">
-            </div>
-          </div>
-          <div class="config-group">
-            <label class="config-label" for="losingMessagesTextarea">Mensajes para los giros anteriores</label>
-            <textarea id="losingMessagesTextarea" class="config-textarea" rows="4" placeholder="Uno por línea">Perdiste, pendejo 😜
-Todavía no…
-¡Casi, casi!
-La suerte sigue girando</textarea>
-            <p class="config-hint">Se usarán en orden. Si faltan mensajes, la lista vuelve a comenzar.</p>
-          </div>
-          <button type="button" class="btn-secondary" id="resetSequenceBtn">Reiniciar secuencia al giro 1</button>
         </div>
 
         <!-- Section 2: Participants List -->
@@ -476,6 +477,6 @@ La suerte sigue girando</textarea>
   </div>
 
   <!-- Main JavaScript File -->
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

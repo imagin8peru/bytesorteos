@@ -1760,3 +1760,14 @@ body.view-display.show-participants .roulette-section, body.view-display.show-pa
 body.view-display .winner-card.is-losing.has-selection .result-message-text { font-size: clamp(14px, 2.2vh, 22px); }
 body.view-display .winner-card.is-losing.has-selection .ribbon-text { font-size: 14px; }
 .btn-confirm-winner:disabled { opacity: .45; cursor: default; }
+
+/* Explicit controls stay readable regardless of browser number-input styling. */
+.number-stepper { position: relative; width: 100%; }
+.number-stepper .config-input { padding-right: 46px; min-height: 46px; appearance: textfield; -moz-appearance: textfield; }
+.number-stepper input::-webkit-inner-spin-button, .number-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.number-stepper-arrows { position: absolute; right: 3px; top: 3px; bottom: 3px; display: grid; grid-template-rows: 1fr 1fr; width: 36px; gap: 1px; }
+.number-stepper-arrows button { display: grid; place-items: center; border: 0; background: #9beb32; color: #161b2e; cursor: pointer; border-radius: 5px; padding: 0; }
+.number-stepper-arrows button:hover { background: #c2ff77; }
+.number-stepper-arrows button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.number-stepper-arrows button:disabled { opacity: .35; cursor: default; }
+body.view-display .ribbon-text { overflow-wrap: anywhere; }
